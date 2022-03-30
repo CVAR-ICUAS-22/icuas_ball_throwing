@@ -1,0 +1,15 @@
+{
+  "configurations" : {
+    "Launch":{
+      "adapter": "vscode-cpptools",
+      "configuration":{
+        "request": "launch",
+        "program": "build/linux-debug/devel/lib/ball_throwing/ball_throwing_node",
+        "cwd": "${workspaceFolder}",
+        "args": [ "__ns:=/red" ],
+        "externalConsole": true,
+        "MIMode": "gdb"
+      }
+    }
+  }
+}

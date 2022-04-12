@@ -66,7 +66,7 @@
 #define POSE_REFERENCE_TOPIC_TYPE geometry_msgs::PoseStamped
 #define TARGET_POSITION_TOPIC "target_position"
 
-#define RELEASE_BALL_TOPIC "ball/magnet/gain"
+#define RELEASE_BALL_TOPIC "uav_magnet/gain"
 #define RELEASE_BALL_TOPIC_TYPE std_msgs::Float32
 
 #define MAX_HEIGHT 4.5

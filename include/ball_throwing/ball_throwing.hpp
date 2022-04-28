@@ -72,10 +72,14 @@
 #define MAX_HEIGHT 4.5
 #define LAUNCH_SPEED 4.0
 #define BEGIN_POINT_DISTANCE_MARGIN 8
+#define BEGIN_POINT_HEIGHT 1.0
 #define THROW_THRESHOLD 0.2
 #define Z_OFFSET_BALL 0.4
 #define X_OFFSET_BALL 0.0
-#define T_DELAY -0.3
+#define T_DELAY 0.0 // 0.3
+
+#define MAX_X 11.5
+#define MAX_Y 6.5
 
 using Vector3d = Eigen::Vector3d;
 
@@ -96,6 +100,12 @@ private:
   Vector3d initial_point_;
   geometry_msgs::TwistStamped speed_to_follow_;
 
+  float launch_distance_;
+  float launch_height_;
+  bool ball_released_ = false;
+  Vector3d launch_trajectory_endpoint_;
+  Vector3d tag_orientation_;
+
   enum class State
   {
     IDLE,
@@ -105,165 +115,26 @@ private:
   } state_ = State::IDLE;
 
 public:
-  BallThrowing()
-  {
-    sub_odom_ = nh_.subscribe(ODOM_TOPIC, 1, &BallThrowing::CallbackOdomTopic, this);
-    sub_target_position_ =
-        nh_.subscribe(TARGET_POSITION_TOPIC, 1, &BallThrowing::CallbackTargetPositionTopic, this);
-    pub_speed_reference_ = nh_.advertise<geometry_msgs::TwistStamped>(SPEED_REFERENCE_TOPIC, 1);
-    pub_pose_reference_ = nh_.advertise<geometry_msgs::PoseStamped>(POSE_REFERENCE_TOPIC, 1);
-    pub_release_ball_ = nh_.advertise<std_msgs::Float32>(RELEASE_BALL_TOPIC, 1);
-  };
-
-  void computeSpeedToFollow()
-  {
-    Vector3d speed_to_follow_vector = (marker_position_ - drone_position_);
-    speed_to_follow_vector.z() = 0;
-    speed_to_follow_vector = speed_to_follow_vector.normalized() * LAUNCH_SPEED;
-
-    speed_to_follow_.twist.linear.x = speed_to_follow_vector(0);
-    speed_to_follow_.twist.linear.y = speed_to_follow_vector(1);
-    speed_to_follow_.twist.linear.z = speed_to_follow_vector(2);
-    speed_to_follow_.header.stamp = ros::Time::now();
-  }
-
+  BallThrowing();
   ~BallThrowing(){};
-  void run()
-  {
-    switch (state_)
-    {
-    case State::IDLE:
-      break;
-    case State::WAITING_FOR_REFERENCES:
-      break;
-    case State::APPROACHING_INITIAL_POINT:
-    {
-      if ((drone_position_ - initial_point_).norm() < 0.2f)
-      {
-        state_ = State::THROWING_TRAJECTORY;
-      }
-      else
-      {
-        pub_pose_reference_.publish(generatePoseMsg(initial_point_));
-      }
-    }
-    break;
-    case State::THROWING_TRAJECTORY:
-    {
-      if (computeBallRelease())
-      {
-        // pub_pose_reference_.publish(generatePoseMsg(drone_position_ + Vector3d(-1.0, 0.0, 0.1)));
-        pub_pose_reference_.publish(generatePoseMsg(Vector3d(5, 0, MAX_HEIGHT)));
-        releaseBall();
-        state_ = State::IDLE;
-        // pub_pose_reference_.publish(generatePoseMsg(drone_position_ + Vector3d(-1.0, 0.0, 0.1)));
-      }
-      else
-      {
-        computeSpeedToFollow();
-        pub_speed_reference_.publish(speed_to_follow_);
-      }
-    }
-    break;
-    default:
-      break;
-    }
-  };
 
-  bool computeBallRelease()
-  {
-    if (drone_position_.x() > 10.0 || fabs(drone_position_.y()) > 5.5)
-    {
-      // LOG
-      ROS_INFO("Ball released because the drone is too far");
-      return true;
-    }
+  void run();
 
-    bool release = false;
-    Vector3d marker_position_diff = marker_position_ - drone_position_;
-    double z_diff = -marker_position_diff.z();
-    double z_speed = drone_velocity_.z();
-    // double z_speed = 0.0f;
-    double t_contact_z = T_DELAY + (z_speed + std::sqrt(z_speed * z_speed + 2 * 9.81f * z_diff)) / 9.81f;
-
-    // check it t_contact_z is nan
-    if (std::isnan(t_contact_z))
-    {
-      return false;
-    }
-    Vector3d marker_position_contact = drone_position_ + drone_velocity_ * t_contact_z;
-    marker_position_contact.z() = marker_position_.z();
-
-    double distance_to_marker = (marker_position_contact - marker_position_).norm();
-    // log
-    if (distance_to_marker < THROW_THRESHOLD)
-    {
-      release = true;
-    }
-    return release;
-  }
-
-  void computeInitialPoint()
-  {
-    // initial_point_ = marker_position_ - Vector3d(1, 0, 0) * BEGIN_POINT_DISTANCE_MARGIN;
-    initial_point_ = drone_position_;
-    initial_point_.z() = MAX_HEIGHT;
-    // LOG
-    std::cout << "Initial point: " << initial_point_.transpose() << std::endl;
-  }
-
-  void releaseBall()
-  {
-    std_msgs::Float32 msg;
-    msg.data = 0.0f;
-    pub_release_ball_.publish(msg);
-  }
+  void computeSpeedToFollow();
+  bool computeBallRelease();
+  void computeInitialPoint();
+  void releaseBall();
+  void computeLaunchingParameters();
 
   geometry_msgs::PoseStamped generatePoseMsg(
       const Eigen::Vector3d &position,
-      const Eigen::Quaterniond &orientation = Eigen::Quaterniond::Identity())
-  {
-    geometry_msgs::PoseStamped pose_msg;
-    pose_msg.pose.position.x = position.x();
-    pose_msg.pose.position.y = position.y();
-    pose_msg.pose.position.z = position.z();
-    pose_msg.pose.orientation.x = orientation.x();
-    pose_msg.pose.orientation.y = orientation.y();
-    pose_msg.pose.orientation.z = orientation.z();
-    pose_msg.pose.orientation.w = orientation.w();
-    return pose_msg;
-  }
+      const Eigen::Quaterniond &orientation = Eigen::Quaterniond::Identity());
 
 private:
-  void CallbackOdomTopic(const nav_msgs::Odometry &odom_msg)
-  {
-    if (state_ == State::IDLE)
-    {
-      state_ = State::WAITING_FOR_REFERENCES;
-      // log
-      std::cout << "Ball throwing: waiting for references" << std::endl;
-    }
-    drone_position_ = Vector3d(odom_msg.pose.pose.position.x, odom_msg.pose.pose.position.y,
-                               odom_msg.pose.pose.position.z);
-    drone_velocity_ = Vector3d(odom_msg.twist.twist.linear.x, odom_msg.twist.twist.linear.y,
-                               odom_msg.twist.twist.linear.z);
-  };
-
-  void CallbackTargetPositionTopic(const geometry_msgs::PoseStamped &target_position_msg)
-  {
-    // log
-    if (state_ == State::WAITING_FOR_REFERENCES)
-    {
-      // log
-      std::cout << "Ball throwing: received target position" << std::endl;
-      state_ = State::APPROACHING_INITIAL_POINT;
-      marker_position_ =
-          Vector3d(target_position_msg.pose.position.x + X_OFFSET_BALL, target_position_msg.pose.position.y,
-                   target_position_msg.pose.position.z + Z_OFFSET_BALL);
-      computeInitialPoint();
-      pub_pose_reference_.publish(generatePoseMsg(initial_point_));
-    }
-  };
+  void CallbackOdomTopic(const nav_msgs::Odometry &odom_msg);
+  void CallbackTargetPositionTopic(const geometry_msgs::PoseStamped &target_position_msg);
 };
+
+Vector3d identifyTagOrientation(const Vector3d tag_position_);
 
 #endif

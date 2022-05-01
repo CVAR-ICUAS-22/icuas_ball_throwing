@@ -92,10 +92,10 @@ void BallThrowing::run()
       launch_trajectory_endpoint_.z() += launch_height_; // ADAPTED HEIGHT LAUNCH
       // launch_trajectory_endpoint_.z() = MAX_HEIGHT; // MAX HEIGHT LAUNCH
       pub_pose_reference_.publish(generatePoseMsg(launch_trajectory_endpoint_));
-      ROS_INFO("launch_trajectory_endpoint_: %f, %f, %f",
-               launch_trajectory_endpoint_.x(),
-               launch_trajectory_endpoint_.y(),
-               launch_trajectory_endpoint_.z());
+      ROS_DEBUG("launch_trajectory_endpoint_: %f, %f, %f",
+                launch_trajectory_endpoint_.x(),
+                launch_trajectory_endpoint_.y(),
+                launch_trajectory_endpoint_.z());
 
       // SPEED TRAJECTORY LAUNCHING
       // computeSpeedToFollow();
@@ -195,7 +195,7 @@ void BallThrowing::computeLaunchingParameters()
 
   // ROS_INFO("t_fall: %f", t_fall);
   // ROS_INFO("t_launch: %f", t_launch);
-  ROS_INFO("Launch distance: %f", launch_distance_);
+  ROS_DEBUG("Launch distance: %f", launch_distance_);
 }
 
 void BallThrowing::computeInitialPoint()
@@ -284,8 +284,6 @@ Vector3d identifyTagOrientation(const Vector3d tag_position_)
   {
     return Vector3d(-1, 0, 0);
   }
-
-  ROS_INFO("Tag not in front wall");
 
   if (tag_position_.y() > 0)
   {

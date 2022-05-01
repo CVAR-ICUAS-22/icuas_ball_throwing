@@ -52,7 +52,6 @@
 
 // Std libraries
 #include <math.h>
-
 #include <array>
 #include <iostream>
 #include <vector>

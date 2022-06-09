@@ -45,7 +45,8 @@
 #include "nav_msgs/Odometry.h"
 #include "ros/ros.h"
 #include "std_msgs/Float32.h"
-#include "trajectory_msgs/MultiDOFJointTrajectory.h"
+// #include "trajectory_msgs/MultiDOFJointTrajectory.h"
+#include <trajectory_msgs/MultiDOFJointTrajectoryPoint.h>
 
 // Eigen
 #include <Eigen/Dense>
@@ -63,6 +64,8 @@
 #define SPEED_REFERENCE_TOPIC_TYPE geometry_msgs::TwistStamped
 #define POSE_REFERENCE_TOPIC "motion_reference/pose"
 #define POSE_REFERENCE_TOPIC_TYPE geometry_msgs::PoseStamped
+#define WAYPOINT_TOPIC "position_hold/trajectory"
+#define WAYPOINT_TOPIC_TYPE trajectory_msgs::MultiDOFJointTrajectoryPoint
 #define TARGET_POSITION_TOPIC "target_position"
 
 #define RELEASE_BALL_TOPIC "uav_magnet/gain"
@@ -91,6 +94,7 @@ private:
   ros::Publisher pub_speed_reference_;
   ros::Publisher pub_pose_reference_;
   ros::Publisher pub_release_ball_;
+  ros::Publisher waypoint_pub_;
 
   bool active = false;
   Vector3d marker_position_;
@@ -103,7 +107,7 @@ private:
   float launch_height_;
   bool ball_released_ = false;
   Vector3d launch_trajectory_endpoint_;
-  Vector3d tag_orientation_;
+  Vector3d tag_vector_;
 
   enum class State
   {
@@ -126,14 +130,18 @@ public:
   void computeLaunchingParameters();
 
   geometry_msgs::PoseStamped generatePoseMsg(
-      const Eigen::Vector3d &position,
-      const Eigen::Quaterniond &orientation = Eigen::Quaterniond::Identity());
+      const Eigen::Vector3d &_position,
+      const Eigen::Quaterniond &_orientation = Eigen::Quaterniond::Identity());
 
 private:
-  void CallbackOdomTopic(const nav_msgs::Odometry &odom_msg);
-  void CallbackTargetPositionTopic(const geometry_msgs::PoseStamped &target_position_msg);
+  void CallbackOdomTopic(const nav_msgs::Odometry &_odom_msg);
+  void CallbackTargetPositionTopic(const geometry_msgs::PoseStamped &_target_position_msg);
 };
 
-Vector3d identifyTagOrientation(const Vector3d tag_position_);
+Vector3d identifyTagOrientation(const Vector3d &_tag_position);
+float identifyTagYaw(const Eigen::Vector3d &_tag_position);
+Eigen::Quaterniond setOrientationFromTag(const Eigen::Vector3d &_tag_position);
+trajectory_msgs::MultiDOFJointTrajectoryPoint generateWaypointMsg(const Eigen::Vector3d &_position,
+                                                                  const Eigen::Quaterniond &_orientation);
 
 #endif

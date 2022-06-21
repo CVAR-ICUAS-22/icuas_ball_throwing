@@ -39,6 +39,47 @@ BallThrowing::BallThrowing()
   waypoint_pub_ = nh_.advertise<WAYPOINT_TOPIC_TYPE>(WAYPOINT_TOPIC, 1);
   pub_release_ball_ = nh_.advertise<RELEASE_BALL_TOPIC_TYPE>(RELEASE_BALL_TOPIC, 1);
 
+  // Load parameters
+  nh_.getParam("ball_throwing/launch_speed", launch_speed_);
+  nh_.getParam("ball_throwing/launch_height", launch_height_);
+  nh_.getParam("ball_throwing/launch_start_distance", launch_start_distance_);
+
+  nh_.getParam("ball_throwing/x_offset_ball", x_offset_ball_);
+  nh_.getParam("ball_throwing/y_offset_ball", y_offset_ball_);
+  nh_.getParam("ball_throwing/z_offset_ball", z_offset_ball_);
+  nh_.getParam("ball_throwing/z_correction", z_correction_);
+  nh_.getParam("ball_throwing/t_delay", t_delay_);
+
+  nh_.getParam("ball_throwing/launch_security_distance", launch_security_distance_);
+  nh_.getParam("ball_throwing/map_max_x", map_max_x_);
+  nh_.getParam("ball_throwing/map_max_y", map_max_y_);
+  nh_.getParam("ball_throwing/map_max_z", map_max_z_);
+
+  nh_.getParam("ball_throwing/home_x", home_point_.x());
+  nh_.getParam("ball_throwing/home_y", home_point_.y());
+  nh_.getParam("ball_throwing/home_z", home_point_.z());
+
+  nh_.getParam("ball_throwing/ball_radious", ball_radious_);
+  nh_.getParam("ball_throwing/throw_threshold", throw_threshold_);
+  nh_.getParam("ball_throwing/begin_point_distance_margin", begin_point_distance_margin_);
+  nh_.getParam("ball_throwing/begin_point_height", begin_point_height_);
+
+  ROS_INFO("Launch speed: %.2f", launch_speed_);
+  ROS_INFO("x_offset_ball: %.2f", x_offset_ball_);
+  ROS_INFO("y_offset_ball: %.2f", y_offset_ball_);
+  ROS_INFO("z_offset_ball: %.2f", z_offset_ball_);
+  ROS_INFO("z_correction: %.2f", z_correction_);
+  ROS_INFO("t_delay: %.2f", t_delay_);
+
+  ROS_INFO("Launch security distance: %.2f", launch_security_distance_);
+  ROS_INFO("Map limits: x: %.2f, y: %.2f, z: %.2f", map_max_x_, map_max_y_, map_max_z_);
+  ROS_INFO("Home: x: %.2f, y: %.2f, z: %.2f", home_point_.x(), home_point_.y(), home_point_.z());
+
+  ROS_INFO("ball_radious: %.2f", ball_radious_);
+  ROS_INFO("throw_threshold: %.2f", throw_threshold_);
+  ROS_INFO("begin_point_distance_margin: %.2f", begin_point_distance_margin_);
+  ROS_INFO("begin_point_height: %.2f", begin_point_height_);
+
   computeLaunchingParameters();
 }
 
@@ -70,9 +111,10 @@ void BallThrowing::run()
       float distance = (drone_position_ - launch_trajectory_endpoint_).norm();
       if (distance < 0.2f)
       {
-        Vector3d home_point(5, 0, MAX_HEIGHT);
+        // Vector3d home_point(5, 0, max_height_);
+        ROS_INFO("Ball thrown, going to home point: %.2f, %.2f, %.2f", home_point_.x(), home_point_.y(), home_point_.z());
         // pub_pose_reference_.publish(generatePoseMsg(home_point, setOrientationFromTag(marker_position_)));
-        waypoint_pub_.publish(generateWaypointMsg(home_point, setOrientationFromTag(marker_position_)));
+        waypoint_pub_.publish(generateWaypointMsg(home_point_, setOrientationFromTag(marker_position_)));
 
         state_ = State::IDLE;
       }
@@ -92,10 +134,14 @@ void BallThrowing::run()
     {
       // POSE TRAJECTORY LAUNCHING
       // Vector3d wall_gap = identifyTagOrientation(marker_position_);
-      float security_distance = 1.0f; // in meters
-      launch_trajectory_endpoint_ = marker_position_ + tag_vector_ * security_distance;
+      // security_distance_ = 1.0f; // in meters
+      launch_trajectory_endpoint_ = marker_position_ + tag_vector_ * launch_security_distance_;
       launch_trajectory_endpoint_.z() += launch_height_; // ADAPTED HEIGHT LAUNCH
       // launch_trajectory_endpoint_.z() = MAX_HEIGHT; // MAX HEIGHT LAUNCH
+      if (launch_trajectory_endpoint_.z() > map_max_z_)
+      {
+        launch_trajectory_endpoint_.z() = map_max_z_;
+      }
 
       // pub_pose_reference_.publish(generatePoseMsg(launch_trajectory_endpoint_, setOrientationFromTag(marker_position_)));
       waypoint_pub_.publish(generateWaypointMsg(launch_trajectory_endpoint_, setOrientationFromTag(marker_position_)));
@@ -126,7 +172,7 @@ void BallThrowing::computeSpeedToFollow()
   Vector3d speed_to_follow_vector = (marker_position_ - drone_position_);
   speed_to_follow_vector.z() = 0;
 
-  speed_to_follow_vector = speed_to_follow_vector.normalized() * LAUNCH_SPEED;
+  speed_to_follow_vector = speed_to_follow_vector.normalized() * launch_speed_;
 
   speed_to_follow_.twist.linear.x = speed_to_follow_vector(0);
   speed_to_follow_.twist.linear.y = speed_to_follow_vector(1);
@@ -169,7 +215,8 @@ void BallThrowing::computeSpeedToFollow()
 
 bool BallThrowing::computeBallRelease()
 {
-  if (drone_position_.x() > MAX_X || fabs(drone_position_.y()) > MAX_Y)
+  if (drone_position_.x() > (map_max_x_ - launch_security_distance_) ||
+      fabs(drone_position_.y()) > (map_max_y_ - launch_security_distance_))
   {
     // LOG
     ROS_INFO("Ball released because the drone is too close to the walls");
@@ -193,11 +240,11 @@ bool BallThrowing::computeBallRelease()
 
 void BallThrowing::computeLaunchingParameters()
 {
-  float v_max = 3.0f;
-  launch_height_ = 1.5f;
+  float v_max = launch_speed_;
+  // launch_height_ = 1.5f;
 
   float t_fall = std::sqrt(2 * launch_height_ / 9.81f);
-  float t_launch = T_DELAY + t_fall;
+  float t_launch = t_delay_ + t_fall;
 
   launch_distance_ = v_max * t_launch;
 
@@ -210,8 +257,8 @@ void BallThrowing::computeInitialPoint()
 {
   // initial_point_ = marker_position_ - Vector3d(1, 0, 0) * BEGIN_POINT_DISTANCE_MARGIN;
   tag_vector_ = identifyTagOrientation(marker_position_);
-  float launch_distance = 6.0f; // in meters
-  initial_point_ = marker_position_ + tag_vector_ * launch_distance;
+  // float launch_distance = 6.0f; // in meters
+  initial_point_ = marker_position_ + tag_vector_ * launch_start_distance_;
 
   // initial_point_.z() = MAX_HEIGHT; // MAX HEIGHT LAUNCH
   initial_point_.z() = marker_position_.z() + launch_height_; // ADAPTED HEIGHT LAUNCH
@@ -253,9 +300,9 @@ void BallThrowing::CallbackTargetPositionTopic(const geometry_msgs::PoseStamped 
     // log
     std::cout << "Ball throwing: received target position" << std::endl;
     state_ = State::APPROACHING_INITIAL_POINT;
-    marker_position_ = Vector3d(_target_position_msg.pose.position.x + X_OFFSET_BALL,
-                                _target_position_msg.pose.position.y,
-                                _target_position_msg.pose.position.z + Z_OFFSET_BALL - 0.6f);
+    marker_position_ = Vector3d(_target_position_msg.pose.position.x + x_offset_ball_,
+                                _target_position_msg.pose.position.y + y_offset_ball_,
+                                _target_position_msg.pose.position.z + z_offset_ball_ + z_correction_);
     computeInitialPoint();
     // pub_pose_reference_.publish(generatePoseMsg(initial_point_, setOrientationFromTag(marker_position_)));
     waypoint_pub_.publish(generateWaypointMsg(initial_point_, setOrientationFromTag(marker_position_)));
@@ -304,7 +351,7 @@ trajectory_msgs::MultiDOFJointTrajectoryPoint generateWaypointMsg(const Eigen::V
   return trajectory_point;
 }
 
-Eigen::Quaterniond setOrientationFromTag(const Eigen::Vector3d &_tag_position)
+Eigen::Quaterniond BallThrowing::setOrientationFromTag(const Eigen::Vector3d &_tag_position)
 {
   float yaw = identifyTagYaw(_tag_position);
   tf2::Quaternion q;
@@ -313,11 +360,11 @@ Eigen::Quaterniond setOrientationFromTag(const Eigen::Vector3d &_tag_position)
   return orientation;
 }
 
-Vector3d identifyTagOrientation(const Vector3d &_tag_position)
+Vector3d BallThrowing::identifyTagOrientation(const Vector3d &_tag_position)
 {
-  float x_max = 12.5f;
-  float y_min = 7.5f;
-  float confidence = 0.5f;
+  float x_max = map_max_x_;
+  float y_min = map_max_y_;
+  float confidence = identify_tag_wall_confidence_;
 
   if (_tag_position.x() > (x_max - confidence))
   {
@@ -338,11 +385,11 @@ Vector3d identifyTagOrientation(const Vector3d &_tag_position)
   }
 }
 
-float identifyTagYaw(const Eigen::Vector3d &_tag_position)
+float BallThrowing::identifyTagYaw(const Eigen::Vector3d &_tag_position)
 {
-  float x_max = 12.5f;
-  float y_min = 7.5f;
-  float confidence = 0.5f;
+  float x_max = map_max_x_;
+  float y_min = map_max_y_;
+  float confidence = identify_tag_wall_confidence_;
 
   if (_tag_position.x() > (x_max - confidence))
   {

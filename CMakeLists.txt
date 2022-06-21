@@ -37,6 +37,6 @@ set(SOURCE_FILES
   src/ball_throwing.cpp
 )
 
-add_executable(${PROJECT_NAME}_node src/main_nodes.cpp ${SOURCE_FILES})
+add_executable(${PROJECT_NAME}_node src/ball_throwing_node.cpp ${SOURCE_FILES})
 add_dependencies(${PROJECT_NAME}_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES})

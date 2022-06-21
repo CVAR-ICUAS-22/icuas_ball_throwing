@@ -1,0 +1,56 @@
+<!-- Launches: differential controller and trajectory generator -->
+<launch>
+  <arg name="launch_speed" default="3.5" />
+  <arg name="launch_height" default="2.0" />
+  <arg name="launch_start_distance" default="8.0" />
+  
+  <arg name="x_offset_ball" default="0.0" />
+  <arg name="y_offset_ball" default="0.0" />
+  <arg name="z_offset_ball" default="0.4" />
+  <arg name="z_correction" default="-0.6" />
+  <arg name="t_delay" default="0.3" />
+
+  <arg name="launch_security_distance" default="1.0" />
+  <arg name="map_max_x" default="12.5" />
+  <arg name="map_max_y" default="7.5" />
+  <arg name="map_max_z" default="6.0" />
+
+  <arg name="home_x" default="5.0" />
+  <arg name="home_y" default="0.0" />
+  <arg name="home_z" default="2.0" />
+  
+  <arg name="ball_radious" default="0.0" />
+  <arg name="throw_threshold" default="0.2" />
+  <arg name="begin_point_distance_margin" default="8.0" />
+  <arg name="begin_point_height" default="1.0" />
+
+	<arg name = "namespace"					    default = "drone1"/>
+	<group ns="$(arg namespace)">
+    <node name="ball_throwing" pkg="ball_throwing" type="ball_throwing_node" output="screen">
+      <param name="launch_speed" type="double" value="$(arg launch_speed)" />
+      <param name="launch_height" type="double" value="$(arg launch_height)" />
+      <param name="launch_start_distance" type="double" value="$(arg launch_start_distance)" />
+      
+      <param name="x_offset_ball" type="double" value="$(arg x_offset_ball)" />
+      <param name="y_offset_ball" type="double" value="$(arg y_offset_ball)" />
+      <param name="z_offset_ball" type="double" value="$(arg z_offset_ball)" />
+      <param name="z_correction" type="double" value="$(arg z_correction)" />
+      <param name="t_delay" type="double" value="$(arg t_delay)" />
+
+      <param name="launch_security_distance" type="double" value="$(arg launch_security_distance)" />
+      <param name="map_max_x" type="double" value="$(arg map_max_x)" />
+      <param name="map_max_y" type="double" value="$(arg map_max_y)" />
+      <param name="map_max_z" type="double" value="$(arg map_max_z)" />
+
+      <param name="home_x" type="double" value="$(arg home_x)" />
+      <param name="home_y" type="double" value="$(arg home_y)" />
+      <param name="home_z" type="double" value="$(arg home_z)" />
+
+      <param name="ball_radious" type="double" value="$(arg ball_radious)" />
+      <param name="throw_threshold" type="double" value="$(arg throw_threshold)" />
+      <param name="begin_point_distance_margin" type="double" value="$(arg begin_point_distance_margin)" />
+      <param name="begin_point_height" type="double" value="$(arg begin_point_height)" />
+
+    </node>
+	</group>
+</launch>

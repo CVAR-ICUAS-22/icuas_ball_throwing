@@ -144,7 +144,16 @@ void BallThrowing::run()
     }
     else
     {
+
+      if (speed_controller_)
+      {
+        computeSpeedToFollow();
+        pub_speed_reference_.publish(speed_to_follow_);
+      }
+      else
+      {
       // POSE TRAJECTORY LAUNCHING
+      //
       // Vector3d wall_gap = identifyTagOrientation(marker_position_);
       // security_distance_ = 1.0f; // in meters
       launch_trajectory_endpoint_ = marker_position_ + tag_vector_ * launch_security_distance_;
@@ -154,14 +163,6 @@ void BallThrowing::run()
       {
         launch_trajectory_endpoint_.z() = map_max_z_;
       }
-
-      if (speed_controller_)
-      {
-        computeSpeedToFollow();
-        pub_speed_reference_.publish(speed_to_follow_);
-      }
-      else
-      {
         pub_pose_reference_.publish(generatePoseMsg(launch_trajectory_endpoint_, setOrientationFromTag(marker_position_)));
         // waypoint_pub_.publish(generateWaypointMsg(launch_trajectory_endpoint_, setOrientationFromTag(marker_position_)));
 
@@ -212,9 +213,9 @@ bool BallThrowing::computeBallRelease()
   double z_diff = -marker_position_diff.z();
   double z_speed = drone_velocity_.z();
   // double z_speed = 0.0f;
-  double t_contact_z = t_delay_ + (z_speed + std::sqrt(z_speed * z_speed + 2 * 9.81f * z_diff)) / 9.81f;
+  double t_contact_z = (z_speed + std::sqrt(z_speed * z_speed + 2 * 9.81f * z_diff)) / 9.81f;
 
-  ROS_INFO("T contact: %d", t_contact_z);
+  ROS_INFO("T contact: %.4f", t_contact_z);
 
   // check it t_contact_z is nan
   if (std::isnan(t_contact_z))
@@ -222,12 +223,15 @@ bool BallThrowing::computeBallRelease()
     return false;
   }
   Vector3d marker_position_contact = drone_position_ + drone_velocity_ * t_contact_z;
-  marker_position_contact.z() = marker_position_.z();
+  std::cout << "marker_position_contact: " << marker_position_contact.transpose() << std::endl;
+  // marker_position_contact.z() = marker_position_.z();
 
-  double distance_to_marker = (marker_position_contact - marker_position_).norm();
+  // double distance_to_marker = (marker_position_contact - marker_position_).norm();
   // log
-  if (distance_to_marker < throw_threshold_)
+  // if (distance_to_marker < throw_threshold_)
+  if ( marker_position_contact.x() > marker_position_.x() - throw_threshold_ )
   {
+    ROS_WARN("Releasing ball for contact at [%.2f, %.2f, %.2f]", marker_position_contact.x(), marker_position_contact.y(), marker_position_contact.z());
     release = true;
   }
   return release;

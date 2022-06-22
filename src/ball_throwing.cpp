@@ -43,6 +43,7 @@ BallThrowing::BallThrowing()
   nh_.getParam("ball_throwing/launch_speed", launch_speed_);
   nh_.getParam("ball_throwing/launch_height", launch_height_);
   nh_.getParam("ball_throwing/launch_start_distance", launch_start_distance_);
+  nh_.getParam("ball_throwing/speed_reference", speed_controller_);
 
   nh_.getParam("ball_throwing/x_offset_ball", x_offset_ball_);
   nh_.getParam("ball_throwing/y_offset_ball", y_offset_ball_);
@@ -64,7 +65,6 @@ BallThrowing::BallThrowing()
   nh_.getParam("ball_throwing/begin_point_distance_margin", begin_point_distance_margin_);
   nh_.getParam("ball_throwing/begin_point_height", begin_point_height_);
 
-  ROS_INFO("Launch speed: %.2f", launch_speed_);
   ROS_INFO("x_offset_ball: %.2f", x_offset_ball_);
   ROS_INFO("y_offset_ball: %.2f", y_offset_ball_);
   ROS_INFO("z_offset_ball: %.2f", z_offset_ball_);
@@ -80,6 +80,17 @@ BallThrowing::BallThrowing()
   ROS_INFO("begin_point_distance_margin: %.2f", begin_point_distance_margin_);
   ROS_INFO("begin_point_height: %.2f", begin_point_height_);
 
+  ROS_INFO("Launch speed: %.2f", launch_speed_);
+  ROS_INFO("Launch height: %.2f", launch_height_);
+  ROS_INFO("Launch start distance: %.2f", launch_start_distance_);
+
+  std::string controller_str = "pose reference";
+  if (speed_controller_)
+  {
+    controller_str = "speed controller";
+  }
+  ROS_INFO("Controller mode: %s", controller_str.c_str());
+
   computeLaunchingParameters();
 }
 
@@ -93,7 +104,7 @@ void BallThrowing::run()
     break;
   case State::APPROACHING_INITIAL_POINT:
   {
-    if ((drone_position_ - initial_point_).norm() < 0.2f)
+    if ((drone_position_ - initial_point_).norm() < 0.5f)
     {
       state_ = State::THROWING_TRAJECTORY;
     }
@@ -108,16 +119,17 @@ void BallThrowing::run()
   {
     if (ball_released_)
     {
-      float distance = (drone_position_ - launch_trajectory_endpoint_).norm();
-      if (distance < 0.2f)
-      {
-        // Vector3d home_point(5, 0, max_height_);
-        ROS_INFO("Ball thrown, going to home point: %.2f, %.2f, %.2f", home_point_.x(), home_point_.y(), home_point_.z());
-        pub_pose_reference_.publish(generatePoseMsg(home_point_, setOrientationFromTag(marker_position_)));
-        // waypoint_pub_.publish(generateWaypointMsg(home_point_, setOrientationFromTag(marker_position_)));
+      // float distance = (drone_position_ - launch_trajectory_endpoint_).norm();
+      // if (distance < 0.2f)
+      // {
+      // Vector3d home_point(5, 0, max_height_);
+      ROS_INFO("Ball thrown, going to home point: %.2f, %.2f, %.2f", home_point_.x(), home_point_.y(), home_point_.z());
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      pub_pose_reference_.publish(generatePoseMsg(home_point_, setOrientationFromTag(marker_position_)));
+      // waypoint_pub_.publish(generateWaypointMsg(home_point_, setOrientationFromTag(marker_position_)));
 
-        state_ = State::IDLE;
-      }
+      state_ = State::IDLE;
+      // }
     }
 
     if (computeBallRelease())
@@ -143,17 +155,23 @@ void BallThrowing::run()
         launch_trajectory_endpoint_.z() = map_max_z_;
       }
 
-      pub_pose_reference_.publish(generatePoseMsg(launch_trajectory_endpoint_, setOrientationFromTag(marker_position_)));
-      // waypoint_pub_.publish(generateWaypointMsg(launch_trajectory_endpoint_, setOrientationFromTag(marker_position_)));
+      if (speed_controller_)
+      {
+        computeSpeedToFollow();
+        pub_speed_reference_.publish(speed_to_follow_);
+      }
+      else
+      {
+        pub_pose_reference_.publish(generatePoseMsg(launch_trajectory_endpoint_, setOrientationFromTag(marker_position_)));
+        // waypoint_pub_.publish(generateWaypointMsg(launch_trajectory_endpoint_, setOrientationFromTag(marker_position_)));
 
-      ROS_DEBUG_ONCE("launch_trajectory_endpoint_: %f, %f, %f",
-                     launch_trajectory_endpoint_.x(),
-                     launch_trajectory_endpoint_.y(),
-                     launch_trajectory_endpoint_.z());
+        ROS_DEBUG_ONCE("launch_trajectory_endpoint_: %f, %f, %f",
+                       launch_trajectory_endpoint_.x(),
+                       launch_trajectory_endpoint_.y(),
+                       launch_trajectory_endpoint_.z());
+      }
 
       // SPEED TRAJECTORY LAUNCHING
-      // computeSpeedToFollow();
-      // pub_speed_reference_.publish(speed_to_follow_);
     }
   }
   break;
@@ -180,43 +198,9 @@ void BallThrowing::computeSpeedToFollow()
   speed_to_follow_.header.stamp = ros::Time::now();
 }
 
-// bool BallThrowing::computeBallRelease()
-// {
-//   if (drone_position_.x() > MAX_X || fabs(drone_position_.y()) > MAX_Y)
-//   {
-//     // LOG
-//     ROS_INFO("Ball released because the drone is too close to the walls");
-//     return true;
-//   }
-
-//   bool release = false;
-//   Vector3d marker_position_diff = marker_position_ - drone_position_;
-//   double z_diff = -marker_position_diff.z();
-//   double z_speed = drone_velocity_.z();
-//   // double z_speed = 0.0f;
-//   double t_contact_z = T_DELAY + (z_speed + std::sqrt(z_speed * z_speed + 2 * 9.81f * z_diff)) / 9.81f;
-
-//   // check it t_contact_z is nan
-//   if (std::isnan(t_contact_z))
-//   {
-//     return false;
-//   }
-//   Vector3d marker_position_contact = drone_position_ + drone_velocity_ * t_contact_z;
-//   marker_position_contact.z() = marker_position_.z();
-
-//   double distance_to_marker = (marker_position_contact - marker_position_).norm();
-//   // log
-//   if (distance_to_marker < THROW_THRESHOLD)
-//   {
-//     release = true;
-//   }
-//   return release;
-// }
-
 bool BallThrowing::computeBallRelease()
 {
-  if (drone_position_.x() > (map_max_x_ - launch_security_distance_) ||
-      fabs(drone_position_.y()) > (map_max_y_ - launch_security_distance_))
+  if (drone_position_.x() > map_max_x_ || fabs(drone_position_.y()) > map_max_y_)
   {
     // LOG
     ROS_INFO("Ball released because the drone is too close to the walls");
@@ -224,19 +208,55 @@ bool BallThrowing::computeBallRelease()
   }
 
   bool release = false;
-
   Vector3d marker_position_diff = marker_position_ - drone_position_;
-  marker_position_diff.z() = 0;
+  double z_diff = -marker_position_diff.z();
+  double z_speed = drone_velocity_.z();
+  // double z_speed = 0.0f;
+  double t_contact_z = t_delay_ + (z_speed + std::sqrt(z_speed * z_speed + 2 * 9.81f * z_diff)) / 9.81f;
 
-  double distance_to_marker = marker_position_diff.norm();
-  // ROS_INFO("Distance to marker: %f", distance_to_marker);
+  ROS_INFO("T contact: %d", t_contact_z);
 
-  if (distance_to_marker < launch_distance_)
+  // check it t_contact_z is nan
+  if (std::isnan(t_contact_z))
   {
-    return true;
+    return false;
   }
-  return false;
+  Vector3d marker_position_contact = drone_position_ + drone_velocity_ * t_contact_z;
+  marker_position_contact.z() = marker_position_.z();
+
+  double distance_to_marker = (marker_position_contact - marker_position_).norm();
+  // log
+  if (distance_to_marker < throw_threshold_)
+  {
+    release = true;
+  }
+  return release;
 }
+
+// bool BallThrowing::computeBallRelease()
+// {
+//   if (drone_position_.x() > (map_max_x_ - launch_security_distance_) ||
+//       fabs(drone_position_.y()) > (map_max_y_ - launch_security_distance_))
+//   {
+//     // LOG
+//     ROS_INFO("Ball released because the drone is too close to the walls");
+//     return true;
+//   }
+
+//   bool release = false;
+
+//   Vector3d marker_position_diff = marker_position_ - drone_position_;
+//   marker_position_diff.z() = 0;
+
+//   double distance_to_marker = marker_position_diff.norm();
+//   // ROS_INFO("Distance to marker: %f", distance_to_marker);
+
+//   if (distance_to_marker < launch_distance_)
+//   {
+//     return true;
+//   }
+//   return false;
+// }
 
 void BallThrowing::computeLaunchingParameters()
 {
@@ -306,6 +326,10 @@ void BallThrowing::CallbackTargetPositionTopic(const geometry_msgs::PoseStamped 
     computeInitialPoint();
     pub_pose_reference_.publish(generatePoseMsg(initial_point_, setOrientationFromTag(marker_position_)));
     // waypoint_pub_.publish(generateWaypointMsg(initial_point_, setOrientationFromTag(marker_position_)));
+  }
+  else
+  {
+    ROS_INFO("QUEEEEEEEEEEEEEEEE");
   }
 }
 

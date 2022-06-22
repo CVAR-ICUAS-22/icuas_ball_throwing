@@ -58,6 +58,8 @@
 #include <array>
 #include <iostream>
 #include <vector>
+#include <chrono>
+#include <thread>
 
 // definitions
 #define ODOM_TOPIC "odometry"
@@ -89,8 +91,9 @@
 
 using Vector3d = Eigen::Vector3d;
 
-class BallThrowing {
-  private:
+class BallThrowing
+{
+private:
   ros::NodeHandle nh_;
   ros::Subscriber sub_odom_;
   ros::Subscriber sub_target_position_;
@@ -106,7 +109,7 @@ class BallThrowing {
   Vector3d initial_point_;
   Vector3d home_point_;
 
-  geometry_msgs::TwistStamped speed_to_follow_;  // Not used
+  geometry_msgs::TwistStamped speed_to_follow_; // Not used
 
   float launch_distance_;
   float launch_height_;
@@ -117,7 +120,8 @@ class BallThrowing {
   Vector3d tag_vector_;
   float identify_tag_wall_confidence_ = 0.5f;
 
-  enum class State {
+  enum class State
+  {
     IDLE,
     WAITING_FOR_REFERENCES,
     APPROACHING_INITIAL_POINT,
@@ -130,8 +134,9 @@ class BallThrowing {
   float x_offset_ball_, y_offset_ball_, z_offset_ball_, z_correction_;
   float t_delay_;
   float ball_radious_;
+  bool speed_controller_;
 
-  public:
+public:
   BallThrowing();
   ~BallThrowing(){};
 
@@ -147,7 +152,7 @@ class BallThrowing {
       const Eigen::Vector3d &_position,
       const Eigen::Quaterniond &_orientation = Eigen::Quaterniond::Identity());
 
-  private:
+private:
   void CallbackOdomTopic(const nav_msgs::Odometry &_odom_msg);
   void CallbackTargetPositionTopic(const geometry_msgs::PoseStamped &_target_position_msg);
   Vector3d identifyTagOrientation(const Vector3d &_tag_position);

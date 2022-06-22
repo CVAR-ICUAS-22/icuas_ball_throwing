@@ -3,6 +3,7 @@
   <arg name="launch_speed" default="3.5" />
   <arg name="launch_height" default="2.0" />
   <arg name="launch_start_distance" default="8.0" />
+  <arg name="speed_controller" default="false" />
   
   <arg name="x_offset_ball" default="0.0" />
   <arg name="y_offset_ball" default="0.0" />
@@ -30,6 +31,7 @@
       <param name="launch_speed" type="double" value="$(arg launch_speed)" />
       <param name="launch_height" type="double" value="$(arg launch_height)" />
       <param name="launch_start_distance" type="double" value="$(arg launch_start_distance)" />
+      <param name="speed_controller" type="bool" value="$(arg speed_controller)" />
       
       <param name="x_offset_ball" type="double" value="$(arg x_offset_ball)" />
       <param name="y_offset_ball" type="double" value="$(arg y_offset_ball)" />

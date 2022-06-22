@@ -99,8 +99,8 @@ void BallThrowing::run()
     }
     else
     {
-      // pub_pose_reference_.publish(generatePoseMsg(initial_point_, setOrientationFromTag(marker_position_)));
-      waypoint_pub_.publish(generateWaypointMsg(initial_point_, setOrientationFromTag(marker_position_)));
+      pub_pose_reference_.publish(generatePoseMsg(initial_point_, setOrientationFromTag(marker_position_)));
+      // waypoint_pub_.publish(generateWaypointMsg(initial_point_, setOrientationFromTag(marker_position_)));
     }
   }
   break;
@@ -113,8 +113,8 @@ void BallThrowing::run()
       {
         // Vector3d home_point(5, 0, max_height_);
         ROS_INFO("Ball thrown, going to home point: %.2f, %.2f, %.2f", home_point_.x(), home_point_.y(), home_point_.z());
-        // pub_pose_reference_.publish(generatePoseMsg(home_point, setOrientationFromTag(marker_position_)));
-        waypoint_pub_.publish(generateWaypointMsg(home_point_, setOrientationFromTag(marker_position_)));
+        pub_pose_reference_.publish(generatePoseMsg(home_point_, setOrientationFromTag(marker_position_)));
+        // waypoint_pub_.publish(generateWaypointMsg(home_point_, setOrientationFromTag(marker_position_)));
 
         state_ = State::IDLE;
       }
@@ -143,8 +143,8 @@ void BallThrowing::run()
         launch_trajectory_endpoint_.z() = map_max_z_;
       }
 
-      // pub_pose_reference_.publish(generatePoseMsg(launch_trajectory_endpoint_, setOrientationFromTag(marker_position_)));
-      waypoint_pub_.publish(generateWaypointMsg(launch_trajectory_endpoint_, setOrientationFromTag(marker_position_)));
+      pub_pose_reference_.publish(generatePoseMsg(launch_trajectory_endpoint_, setOrientationFromTag(marker_position_)));
+      // waypoint_pub_.publish(generateWaypointMsg(launch_trajectory_endpoint_, setOrientationFromTag(marker_position_)));
 
       ROS_DEBUG_ONCE("launch_trajectory_endpoint_: %f, %f, %f",
                      launch_trajectory_endpoint_.x(),
@@ -304,8 +304,8 @@ void BallThrowing::CallbackTargetPositionTopic(const geometry_msgs::PoseStamped 
                                 _target_position_msg.pose.position.y + y_offset_ball_,
                                 _target_position_msg.pose.position.z + z_offset_ball_ + z_correction_);
     computeInitialPoint();
-    // pub_pose_reference_.publish(generatePoseMsg(initial_point_, setOrientationFromTag(marker_position_)));
-    waypoint_pub_.publish(generateWaypointMsg(initial_point_, setOrientationFromTag(marker_position_)));
+    pub_pose_reference_.publish(generatePoseMsg(initial_point_, setOrientationFromTag(marker_position_)));
+    // waypoint_pub_.publish(generateWaypointMsg(initial_point_, setOrientationFromTag(marker_position_)));
   }
 }
 

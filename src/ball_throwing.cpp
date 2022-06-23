@@ -104,9 +104,10 @@ void BallThrowing::run()
     break;
   case State::APPROACHING_INITIAL_POINT:
   {
-    if ((drone_position_ - initial_point_).norm() < 0.5f)
+    if ((drone_position_ - initial_point_).norm() < 0.2f)
     {
       state_ = State::THROWING_TRAJECTORY;
+      // std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     }
     else
     {
@@ -124,7 +125,9 @@ void BallThrowing::run()
       // {
       // Vector3d home_point(5, 0, max_height_);
       ROS_INFO("Ball thrown, going to home point: %.2f, %.2f, %.2f", home_point_.x(), home_point_.y(), home_point_.z());
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+      // std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
       pub_pose_reference_.publish(generatePoseMsg(home_point_, setOrientationFromTag(marker_position_)));
       // waypoint_pub_.publish(generateWaypointMsg(home_point_, setOrientationFromTag(marker_position_)));
 
@@ -152,17 +155,17 @@ void BallThrowing::run()
       }
       else
       {
-      // POSE TRAJECTORY LAUNCHING
-      //
-      // Vector3d wall_gap = identifyTagOrientation(marker_position_);
-      // security_distance_ = 1.0f; // in meters
-      launch_trajectory_endpoint_ = marker_position_ + tag_vector_ * launch_security_distance_;
-      launch_trajectory_endpoint_.z() += launch_height_; // ADAPTED HEIGHT LAUNCH
-      // launch_trajectory_endpoint_.z() = MAX_HEIGHT; // MAX HEIGHT LAUNCH
-      if (launch_trajectory_endpoint_.z() > map_max_z_)
-      {
-        launch_trajectory_endpoint_.z() = map_max_z_;
-      }
+        // POSE TRAJECTORY LAUNCHING
+        //
+        // Vector3d wall_gap = identifyTagOrientation(marker_position_);
+        // security_distance_ = 1.0f; // in meters
+        launch_trajectory_endpoint_ = marker_position_ + tag_vector_ * launch_security_distance_;
+        launch_trajectory_endpoint_.z() += launch_height_; // ADAPTED HEIGHT LAUNCH
+        // launch_trajectory_endpoint_.z() = MAX_HEIGHT; // MAX HEIGHT LAUNCH
+        if (launch_trajectory_endpoint_.z() > map_max_z_)
+        {
+          launch_trajectory_endpoint_.z() = map_max_z_;
+        }
         pub_pose_reference_.publish(generatePoseMsg(launch_trajectory_endpoint_, setOrientationFromTag(marker_position_)));
         // waypoint_pub_.publish(generateWaypointMsg(launch_trajectory_endpoint_, setOrientationFromTag(marker_position_)));
 
@@ -195,7 +198,8 @@ void BallThrowing::computeSpeedToFollow()
 
   speed_to_follow_.twist.linear.x = speed_to_follow_vector(0);
   speed_to_follow_.twist.linear.y = speed_to_follow_vector(1);
-  speed_to_follow_.twist.linear.z = speed_to_follow_vector(2);
+  // speed_to_follow_.twist.linear.z = speed_to_follow_vector(2);
+  speed_to_follow_.twist.linear.z = 0.1f;
   speed_to_follow_.header.stamp = ros::Time::now();
 }
 
@@ -229,7 +233,7 @@ bool BallThrowing::computeBallRelease()
   // double distance_to_marker = (marker_position_contact - marker_position_).norm();
   // log
   // if (distance_to_marker < throw_threshold_)
-  if ( marker_position_contact.x() > marker_position_.x() - throw_threshold_ )
+  if (marker_position_contact.x() > marker_position_.x() - throw_threshold_)
   {
     ROS_WARN("Releasing ball for contact at [%.2f, %.2f, %.2f]", marker_position_contact.x(), marker_position_contact.y(), marker_position_contact.z());
     release = true;

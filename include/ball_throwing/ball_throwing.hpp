@@ -46,6 +46,7 @@
 #include "nav_msgs/Odometry.h"
 #include "ros/ros.h"
 #include "std_msgs/Float32.h"
+#include "std_msgs/Bool.h"
 // #include "trajectory_msgs/MultiDOFJointTrajectory.h"
 #include <trajectory_msgs/MultiDOFJointTrajectoryPoint.h>
 
@@ -75,6 +76,9 @@
 #define RELEASE_BALL_TOPIC "uav_magnet/gain"
 #define RELEASE_BALL_TOPIC_TYPE std_msgs::Float32
 
+#define PATH_FACING_TOPIC "motion_reference/path_facing"
+#define PATH_FACING_TOPIC_TYPE std_msgs::Bool
+
 // #define MAX_HEIGHT 4.5
 // #define LAUNCH_SPEED 4.0
 // #define BEGIN_POINT_DISTANCE_MARGIN 8
@@ -101,6 +105,7 @@ private:
   ros::Publisher pub_pose_reference_;
   ros::Publisher pub_release_ball_;
   ros::Publisher waypoint_pub_;
+  ros::Publisher path_facing_pub_;
 
   bool active = false;
   Vector3d marker_position_;

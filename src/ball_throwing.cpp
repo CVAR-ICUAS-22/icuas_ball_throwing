@@ -38,6 +38,7 @@ BallThrowing::BallThrowing()
   pub_pose_reference_ = nh_.advertise<POSE_REFERENCE_TOPIC_TYPE>(POSE_REFERENCE_TOPIC, 1);
   waypoint_pub_ = nh_.advertise<WAYPOINT_TOPIC_TYPE>(WAYPOINT_TOPIC, 1);
   pub_release_ball_ = nh_.advertise<RELEASE_BALL_TOPIC_TYPE>(RELEASE_BALL_TOPIC, 1);
+  path_facing_pub_ = nh_.advertise<PATH_FACING_TOPIC_TYPE>(PATH_FACING_TOPIC, 1);
 
   // Load parameters
   nh_.getParam("ball_throwing/launch_speed", launch_speed_);
@@ -107,7 +108,10 @@ void BallThrowing::run()
     if ((drone_position_ - initial_point_).norm() < 0.2f)
     {
       state_ = State::THROWING_TRAJECTORY;
-      // std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+      std_msgs::Bool path_facing_msg_;
+      path_facing_msg_.data = false;
+      path_facing_pub_.publish(path_facing_msg_);
+      std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     }
     else
     {
